@@ -1,4 +1,4 @@
-import { getRepository } from 'typeorm';
+import { getRepository, Like } from 'typeorm';
 import { Employee } from './employee.entity';
 import { Department } from '../departments/department.entity';
 import { db } from "../_helpers/db";
@@ -78,6 +78,19 @@ export class EmployeeService {
     
     // Save and return the updated employee
     return await employeeRepository.save(employee);
+  }
+
+
+
+  
+  async searchByName(name: string) {
+    const employeeRepository = db.dataSource.getRepository(Employee);
+    return await employeeRepository.find({
+      where: {
+        name: Like(`%${name}%`)
+      },
+      relations: ["department"],
+    });
   }
 
 }

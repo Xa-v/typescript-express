@@ -84,6 +84,24 @@ router.get('/', async (req: Request, res: Response) => {
       }
     }
   });
+
+
+  router.get("/search", async (req: Request, res: Response) => {
+    try {
+      const { name } = req.query;
+      if (!name || typeof name !== "string") {
+        return res.status(400).json({ message: "Name query parameter is required" });
+      }
+      const employees = await employeeService.searchByName(name);
+      res.status(200).json(employees);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ message: error.message });
+      } else {
+        res.status(500).json({ message: "An unknown error occurred" });
+      }
+    }
+  });
   
 
 export default router;
