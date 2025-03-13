@@ -93,4 +93,43 @@ export class EmployeeService {
     });
   }
 
+
+  
+  async updateEmployee(id: number, updatedData: Partial<Employee>) {
+    const employeeRepository = db.dataSource.getRepository(Employee);
+
+    // Find the employee by id
+    const employee = await employeeRepository.findOne({ where: { id } });
+    if (!employee) {
+      throw new Error("Employee not found");
+    }
+
+    // Update the fields if provided in updatedData
+    if (updatedData.name !== undefined) {
+      employee.name = updatedData.name;
+    }
+    if (updatedData.position !== undefined) {
+      employee.position = updatedData.position;
+    }
+    if (updatedData.salary !== undefined) {
+      employee.salary = updatedData.salary;
+    }
+    if (updatedData.department !== undefined) {
+      employee.department = updatedData.department;
+    }
+
+
+ await employeeRepository.save(employee);
+
+
+ const updatedEmployeeWithDept = await employeeRepository.findOne({
+   where: { id: employee.id },
+   relations: ["department"],
+ });
+ if (!updatedEmployeeWithDept) {
+   throw new Error("Employee not found after update");
+ }
+ return updatedEmployeeWithDept;
+}
+
 }

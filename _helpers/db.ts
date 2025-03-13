@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import { DataSource, getRepository } from "typeorm";
 import { Employee } from "../employees/employee.entity";
 import { Department } from "../departments/department.entity";
+import { Project} from "../projects/projects.entity";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -72,7 +73,7 @@ export async function initializeDb() {
     database: DATABASE,
     synchronize: true, // Auto-sync schema (use with caution in production)
     logging: true,
-    entities: [Employee, Department],
+    entities: [Employee, Department, Project],
   };
 
   try {

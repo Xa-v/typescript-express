@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne,CreateDateColumn } from 'typeorm';
 import { Department } from '../departments/department.entity';
+import { Project } from "../projects/projects.entity"; 
 
 @Entity()
 export class Employee {
@@ -24,5 +25,6 @@ export class Employee {
   @CreateDateColumn()
   hireDate!: Date;
 
-
+  @ManyToOne(() => Project)
+  projects!: Project[];
 }

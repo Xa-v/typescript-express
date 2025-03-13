@@ -42,7 +42,7 @@ router.get('/', async (req: Request, res: Response) => {
         res.status(400).json({ message:  "Salary is required" });
         return;
       }
-      
+
       const updatedEmployee = await employeeService.updateSalary(id, salary);
       res.status(200).json({
         message: "Updated Employee Salary",
@@ -87,6 +87,7 @@ router.get('/', async (req: Request, res: Response) => {
   });
 
 
+  // Use Case 5: Search Employees by Name
   router.get("/search", async (req: Request, res: Response) => {
     try {
       const { name } = req.query;
@@ -105,5 +106,34 @@ router.get('/', async (req: Request, res: Response) => {
     }
   });
   
+
+// PUT Request: Update Employee details
+// API Route: PUT /employees/:id/update
+router.put("/:id/update", async (req: Request, res: Response) => {
+  try {
+    const employeeId = parseInt(req.params.id, 10);
+    const updatedData = req.body;
+
+    const updatedEmployee = await employeeService.updateEmployee(employeeId, updatedData);
+
+    res.status(200).json({
+      message: "Employee updated successfully",
+      employee: {
+        id: updatedEmployee.id,
+        name: updatedEmployee.name,
+        position: updatedEmployee.position,
+        salary: updatedEmployee.salary,
+        department: updatedEmployee.department.name,
+      },
+    });
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message });
+    } else {
+      res.status(400).json({ message: "An unknown error occurred" });
+    }
+  }
+});
+
 
 export default router;
