@@ -39,9 +39,10 @@ router.get('/', async (req: Request, res: Response) => {
       const { salary } = req.body;
   
       if (salary === undefined) {
-        return res.status(400).json({ message: "Salary is required" });
+        res.status(400).json({ message:  "Salary is required" });
+        return;
       }
-   
+      
       const updatedEmployee = await employeeService.updateSalary(id, salary);
       res.status(200).json({
         message: "Updated Employee Salary",
@@ -89,8 +90,9 @@ router.get('/', async (req: Request, res: Response) => {
   router.get("/search", async (req: Request, res: Response) => {
     try {
       const { name } = req.query;
-      if (!name || typeof name !== "string") {
-        return res.status(400).json({ message: "Name query parameter is required" });
+      if (!name || typeof name !== 'string') {
+        res.status(400).json({ message: "Name query parameter is required" });
+        return; // return undefined (void)
       }
       const employees = await employeeService.searchByName(name);
       res.status(200).json(employees);
