@@ -46,4 +46,38 @@ export class EmployeeService {
       .getMany();
   }
   
+
+  async updateSalary(id: number, salary: number) {
+    const employeeRepository = db.dataSource.getRepository(Employee);
+    
+    // Find the employee by id
+    const employee = await employeeRepository.findOne({ where: { id } });
+    if (!employee) {
+      throw new Error("Employee not found");
+    }
+
+    // Update the salary field only
+    employee.salary = salary;
+
+    // Save the updated employee
+    return await employeeRepository.save(employee);
+  }
+
+
+  async softDelete(id: number) {
+    const employeeRepository = db.dataSource.getRepository(Employee);
+    
+    // Find the employee by id
+    const employee = await employeeRepository.findOne({ where: { id } });
+    if (!employee) {
+      throw new Error("Employee not found");
+    }
+    
+    // Set isActive to false for a soft delete
+    employee.isActive = false;
+    
+    // Save and return the updated employee
+    return await employeeRepository.save(employee);
+  }
+
 }

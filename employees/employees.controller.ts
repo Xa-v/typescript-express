@@ -32,5 +32,58 @@ router.get('/', async (req: Request, res: Response) => {
     }
   });
 
+//Use Case 3: Update Employee Salary
+  router.put("/:id/salary", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const { salary } = req.body;
+  
+      if (salary === undefined) {
+        return res.status(400).json({ message: "Salary is required" });
+      }
+   
+      const updatedEmployee = await employeeService.updateSalary(id, salary);
+      res.status(200).json({
+        message: "Updated Employee Salary",
+        employee_details: {
+          id: updatedEmployee.id,
+          name: updatedEmployee.name,
+          position: updatedEmployee.position,
+          updated_salary: updatedEmployee.salary,
+        },
+      });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(400).json({ message: error.message });
+      } else {
+        res.status(400).json({ message: "An unknown error occurred" });
+      }
+    }
+  });
+  
+
+  //Use Case 4: Delete an Employee
+  router.delete("/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const updatedEmployee = await employeeService.softDelete(id);
+      res.status(200).json({
+        message: "Employee deleted",
+        employee_details: {
+          id: updatedEmployee.id,
+          name: updatedEmployee.name,
+          position: updatedEmployee.position,
+          isActive: updatedEmployee.isActive,
+        },
+      });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(400).json({ message: error.message });
+      } else {
+        res.status(400).json({ message: "An unknown error occurred" });
+      }
+    }
+  });
+  
 
 export default router;
