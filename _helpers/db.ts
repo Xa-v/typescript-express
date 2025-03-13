@@ -1,80 +1,99 @@
-import dotenv from 'dotenv';
-import mysql from 'mysql2/promise';
-import { Sequelize } from 'sequelize';
+import "reflect-metadata";
+import dotenv from "dotenv";
+import { DataSource } from "typeorm";
+import { Employee } from "../employees/employee.entity";
+import { Department } from "../departments/department.entity";
 
 // Load environment variables from .env file
 dotenv.config();
 
 // Define an interface for the database object
 interface Db {
-  [key: string]: any;
-  Sequelize: typeof Sequelize;
-  sequelize: Sequelize;
-  User?: any;
+  dataSource: DataSource;
 }
 
-// Initialize db object with the necessary properties
-const db: Db = {
-  Sequelize,      // Sequelize class reference
-  sequelize: {} as Sequelize, // Temporary empty object until the Sequelize instance is created
-}; 
+export const db: Db = {
+  dataSource: {} as DataSource,
+};
 
-export default db;
 
-initialize();
+async function createDatabaseIfNeeded(typeOrmConfig: any): Promise<void> {
+  if (typeOrmConfig.type !== "mysql") {
+    throw new Error("Auto-creation is only supported for MySQL.");
+  }
 
-async function initialize() {
-  const { host, port, user, password, database } = process.env;
+
+  const masterDataSource = new DataSource({
+    ...typeOrmConfig,
+    database: "mysql",
+  });
+
+  try {
+    await masterDataSource.initialize();
+    console.log("Connected to master database.");
+    await masterDataSource.query(
+      `CREATE DATABASE IF NOT EXISTS \`${typeOrmConfig.database}\``
+    );
+    console.log(
+      `Database "${typeOrmConfig.database}" created successfully (or already exists).`
+    );
+  } catch (error: any) {
+    console.error("Error creating database:", error.message);
+    throw error;
+  } finally {
+    await masterDataSource.destroy();
+  }
+}
+
+export async function initializeDb() {
+  // Destructure environment variables using capital letters
+  const { HOST, PORT, USER, PASSWORD, DATABASE } = process.env;
 
   // Ensure required environment variables are set
-  if (!host || !port || !user || !password || !database) {
-    console.error('Missing one or more required environment variables');
-    throw new Error('Missing one or more required environment variables');
-  }
- 
-  console.log('Database Configuration:', { host, port, user, password, database });
-
-  try {
-    // Connect to MySQL (without specifying the database initially)
-    const connection = await mysql.createConnection({
-      host,
-      port: Number(port),
-      user,
-      password,
-    });
-
-    console.log('Successfully connected to MySQL server');
-
-    // Ensure the database exists, create if necessary
-    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${database}\`;`);
-    console.log(`Database ${database} is ready`);
-
-    await connection.end(); // Close the initial connection (since we're now using Sequelize)
-  } catch (err) {
-    console.error('Error connecting to MySQL:');
-    return; // Exit if the database connection failed
+  if (!HOST || !PORT || !USER || !PASSWORD || !DATABASE) {
+    console.error("Missing one or more required environment variables");
+    throw new Error("Missing one or more required environment variables");
   }
 
+  console.log("Database Configuration:", {
+    HOST,
+    PORT,
+    USER,
+    PASSWORD,
+    DATABASE,
+  });
+
+  // Build the TypeORM configuration object
+  const typeOrmConfig = {
+    type: "mysql" as const,
+    host: HOST,
+    port: Number(PORT),
+    username: USER,
+    password: PASSWORD,
+    database: DATABASE,
+    synchronize: true, // Auto-sync schema (use with caution in production)
+    logging: true,
+    entities: [Employee, Department],
+  };
+
   try {
-    // Create Sequelize instance with the database details
-    const sequelize = new Sequelize(database!, user!, password!, {
-      dialect: 'mysql',
-      host,
-      port: Number(port),
-      logging: console.log, // This logs all SQL queries to the console (helpful for debugging)
-    });
-
-    // Assign Sequelize instance to the db object
-    db.sequelize = sequelize;
-
-    // Initialize your models (e.g., User)
-    const UserModel = require('../users/user.model')(sequelize);
-    db.User = UserModel;
-
-    // Sync all models with the database
-    await sequelize.sync({ alter: true });
-    console.log('Sequelize synced successfully');
+    // Create the database if it does not exist
+    await createDatabaseIfNeeded(typeOrmConfig);
   } catch (err) {
-    console.error('Error initializing Sequelize or syncing models:');
+    console.error("Error during database creation:", err);
+    throw err;
+  }
+
+  try {
+    // Initialize the primary TypeORM DataSource with the target database
+    const dataSource = new DataSource(typeOrmConfig);
+    await dataSource.initialize();
+    console.log("TypeORM DataSource has been initialized");
+
+    // Assign DataSource instance to the db object
+    db.dataSource = dataSource;
+  } catch (err) {
+    console.error("Error initializing TypeORM DataSource:", err);
+    throw err;
   }
 }

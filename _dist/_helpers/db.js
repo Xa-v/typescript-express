@@ -12,64 +12,91 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.db = void 0;
+exports.initializeDb = initializeDb;
+require("reflect-metadata");
 const dotenv_1 = __importDefault(require("dotenv"));
-const promise_1 = __importDefault(require("mysql2/promise"));
-const sequelize_1 = require("sequelize");
+const typeorm_1 = require("typeorm");
+const employee_entity_1 = require("../employees/employee.entity");
+const department_entity_1 = require("../departments/department.entity");
 // Load environment variables from .env file
 dotenv_1.default.config();
-// Initialize db object with the necessary properties
-const db = {
-    Sequelize: sequelize_1.Sequelize, // Sequelize class reference
-    sequelize: {}, // Temporary empty object until the Sequelize instance is created
+exports.db = {
+    dataSource: {},
 };
-exports.default = db;
-initialize();
-function initialize() {
+/**
+ * Creates the target database if it does not exist.
+ * Uses a master connection to the default MySQL database.
+ */
+function createDatabaseIfNeeded(typeOrmConfig) {
     return __awaiter(this, void 0, void 0, function* () {
-        const { host, port, user, password, database } = process.env;
+        if (typeOrmConfig.type !== "mysql") {
+            throw new Error("Auto-creation is only supported for MySQL.");
+        }
+        // Create a master connection using the default 'mysql' database.
+        const masterDataSource = new typeorm_1.DataSource(Object.assign(Object.assign({}, typeOrmConfig), { database: "mysql", entities: [] }));
+        try {
+            yield masterDataSource.initialize();
+            console.log("Connected to master database.");
+            yield masterDataSource.query(`CREATE DATABASE IF NOT EXISTS \`${typeOrmConfig.database}\``);
+            console.log(`Database "${typeOrmConfig.database}" created successfully (or already exists).`);
+        }
+        catch (error) {
+            console.error("Error creating database:", error.message);
+            throw error;
+        }
+        finally {
+            yield masterDataSource.destroy();
+        }
+    });
+}
+function initializeDb() {
+    return __awaiter(this, void 0, void 0, function* () {
+        // Destructure environment variables using capital letters
+        const { HOST, PORT, USER, PASSWORD, DATABASE } = process.env;
         // Ensure required environment variables are set
-        if (!host || !port || !user || !password || !database) {
-            console.error('Missing one or more required environment variables');
-            throw new Error('Missing one or more required environment variables');
+        if (!HOST || !PORT || !USER || !PASSWORD || !DATABASE) {
+            console.error("Missing one or more required environment variables");
+            throw new Error("Missing one or more required environment variables");
         }
-        console.log('Database Configuration:', { host, port, user, password, database });
+        console.log("Database Configuration:", {
+            HOST,
+            PORT,
+            USER,
+            PASSWORD,
+            DATABASE,
+        });
+        // Build the TypeORM configuration object
+        const typeOrmConfig = {
+            type: "mysql",
+            host: HOST,
+            port: Number(PORT),
+            username: USER,
+            password: PASSWORD,
+            database: DATABASE,
+            synchronize: true, // Auto-sync schema (use with caution in production)
+            logging: true,
+            entities: [employee_entity_1.Employee, department_entity_1.Department],
+        };
         try {
-            // Connect to MySQL (without specifying the database initially)
-            const connection = yield promise_1.default.createConnection({
-                host,
-                port: Number(port),
-                user,
-                password,
-            });
-            console.log('Successfully connected to MySQL server');
-            // Ensure the database exists, create if necessary
-            yield connection.query(`CREATE DATABASE IF NOT EXISTS \`${database}\`;`);
-            console.log(`Database ${database} is ready`);
-            yield connection.end(); // Close the initial connection (since we're now using Sequelize)
+            // Create the database if it does not exist
+            yield createDatabaseIfNeeded(typeOrmConfig);
         }
         catch (err) {
-            console.error('Error connecting to MySQL:');
-            return; // Exit if the database connection failed
+            console.error("Error during database creation:", err);
+            throw err;
         }
         try {
-            // Create Sequelize instance with the database details
-            const sequelize = new sequelize_1.Sequelize(database, user, password, {
-                dialect: 'mysql',
-                host,
-                port: Number(port),
-                logging: console.log, // This logs all SQL queries to the console (helpful for debugging)
-            });
-            // Assign Sequelize instance to the db object
-            db.sequelize = sequelize;
-            // Initialize your models (e.g., User)
-            const UserModel = require('../users/user.model')(sequelize);
-            db.User = UserModel;
-            // Sync all models with the database
-            yield sequelize.sync({ alter: true });
-            console.log('Sequelize synced successfully');
+            // Initialize the primary TypeORM DataSource with the target database
+            const dataSource = new typeorm_1.DataSource(typeOrmConfig);
+            yield dataSource.initialize();
+            console.log("TypeORM DataSource has been initialized");
+            // Assign DataSource instance to the db object
+            exports.db.dataSource = dataSource;
         }
         catch (err) {
-            console.error('Error initializing Sequelize or syncing models:');
+            console.error("Error initializing TypeORM DataSource:", err);
+            throw err;
         }
     });
 }

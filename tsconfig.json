@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
     /* Visit https://aka.ms/tsconfig to read more about this file */
-
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "target": "es2016",                                  /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
 
     "module": "commonjs",                           
