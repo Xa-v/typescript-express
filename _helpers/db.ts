@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import dotenv from "dotenv";
-import { DataSource } from "typeorm";
+import { DataSource, getRepository } from "typeorm";
 import { Employee } from "../employees/employee.entity";
 import { Department } from "../departments/department.entity";
 
@@ -16,12 +16,10 @@ export const db: Db = {
   dataSource: {} as DataSource,
 };
 
-
 async function createDatabaseIfNeeded(typeOrmConfig: any): Promise<void> {
   if (typeOrmConfig.type !== "mysql") {
     throw new Error("Auto-creation is only supported for MySQL.");
   }
-
 
   const masterDataSource = new DataSource({
     ...typeOrmConfig,
@@ -65,6 +63,7 @@ export async function initializeDb() {
 
   // Build the TypeORM configuration object
   const typeOrmConfig = {
+    name: "default", // Set the connection name to "default"
     type: "mysql" as const,
     host: HOST,
     port: Number(PORT),
@@ -92,6 +91,20 @@ export async function initializeDb() {
 
     // Assign DataSource instance to the db object
     db.dataSource = dataSource;
+
+    // After initializing, check if the Department table has data.
+    // If not, insert default departments.
+    const departmentRepository = dataSource.getRepository(Department);
+    const count = await departmentRepository.count();
+    if (count === 0) {
+      await departmentRepository.insert([
+        { id: 1, name: "Engineering" },
+        { id: 2, name: "Tambay" },
+      ]);
+      console.log("Default departments inserted.");
+    } else {
+      console.log("Departments already exist.");
+    }
   } catch (err) {
     console.error("Error initializing TypeORM DataSource:", err);
     throw err;
